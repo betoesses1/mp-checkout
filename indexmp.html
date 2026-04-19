@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Pago Seguro — VM Tecnología</title>
-  <script src="https://sdk.mercadopago.com/js/v2"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -23,39 +22,70 @@
       max-width: 480px;
       width: 100%;
       box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+      text-align: center;
     }
-    .logo { text-align: center; margin-bottom: 24px; }
-    .titulo { font-size: 20px; font-weight: 600; color: #1a1a1a; text-align: center; margin-bottom: 4px; }
-    .subtitulo { font-size: 14px; color: #888; text-align: center; margin-bottom: 24px; }
-    .monto-box { background: #f0f7ff; border-radius: 10px; padding: 16px; text-align: center; margin-bottom: 24px; }
+    .titulo { font-size: 20px; font-weight: 600; color: #1a1a1a; margin-bottom: 4px; }
+    .subtitulo { font-size: 14px; color: #888; margin-bottom: 24px; }
+    .monto-box { background: #f0f7ff; border-radius: 10px; padding: 16px; margin-bottom: 24px; }
     .monto-label { font-size: 13px; color: #555; margin-bottom: 4px; }
     .monto-valor { font-size: 32px; font-weight: 700; color: #009ee3; }
-    .loading { text-align: center; padding: 40px 0; color: #888; font-size: 14px; }
+    .btn-pagar {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: #009ee3;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 16px 32px;
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      text-decoration: none;
+      margin-bottom: 16px;
+    }
+    .btn-pagar:hover { background: #0080c0; }
+    .loading { text-align: center; padding: 20px 0; color: #888; font-size: 14px; }
     .spinner { width: 32px; height: 32px; border: 3px solid #e0e0e0; border-top-color: #009ee3; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .seguro { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; color: #aaa; margin-top: 16px; }
-    .error-box { background: #fff0f0; border: 1px solid #ffcccc; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #cc0000; text-align: center; margin-bottom: 16px; display: none; }
+    .seguro { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; color: #aaa; margin-top: 12px; }
+    .logo-mp { margin-bottom: 20px; }
+    .error-box { background: #fff0f0; border: 1px solid #ffcccc; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #cc0000; margin-bottom: 16px; display: none; }
   </style>
 </head>
 <body>
 <div class="card">
-  <div class="logo">
-    <svg width="180" height="36" viewBox="0 0 180 36" xmlns="http://www.w3.org/2000/svg">
-      <text x="0" y="28" font-family="-apple-system,sans-serif" font-size="22" font-weight="700" fill="#009ee3">VM Tecnología</text>
+  <div class="logo-mp">
+    <svg width="140" height="32" viewBox="0 0 140 32" xmlns="http://www.w3.org/2000/svg">
+      <text x="0" y="24" font-family="-apple-system,sans-serif" font-size="18" font-weight="700" fill="#009ee3">VM Tecnología</text>
     </svg>
   </div>
+
   <p class="titulo">Pago Seguro</p>
   <p class="subtitulo">Procesado por Mercado Pago</p>
+
   <div class="monto-box">
     <p class="monto-label">Total a pagar</p>
     <p class="monto-valor" id="monto-display">Cargando...</p>
   </div>
+
   <div class="error-box" id="error-box">Ocurrió un error. Por favor intenta de nuevo.</div>
+
   <div class="loading" id="loading">
     <div class="spinner"></div>
-    Cargando formulario de pago...
+    Preparando tu pago...
   </div>
-  <div id="cardPaymentBrick_container"></div>
+
+  <a href="#" id="btn-pagar" class="btn-pagar" style="display:none;">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="1" y="4" width="22" height="16" rx="2"/>
+      <line x1="1" y1="10" x2="23" y2="10"/>
+    </svg>
+    Pagar con Mercado Pago
+  </a>
+
   <div class="seguro">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2">
       <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
@@ -65,98 +95,61 @@
 </div>
 
 <script>
-  const PUBLIC_KEY = "APP_USR-65c431f8-571d-4d7f-a193-0bda1ba5bf54";
   const NETLIFY_URL = "https://pagos.tiendasvm.com.mx/.netlify/functions/process-payment";
 
   function getParam(name) {
     return new URLSearchParams(window.location.search).get(name);
   }
 
-  let monto = parseFloat(getParam("amount") || "0");
+  const monto = parseFloat(getParam("amount") || "0");
   const orderName = getParam("order") || "";
-  const descripcion = getParam("description") || "Pedido VM Tecnología";
   const email = getParam("email") || "";
+  const descripcion = getParam("description") || "Pedido VM Tecnología";
+
   const montoDisplay = document.getElementById("monto-display");
-
-  async function cargarMonto() {
-    if (monto > 0) {
-      montoDisplay.textContent = "$" + monto.toLocaleString("es-MX", { minimumFractionDigits: 2 }) + " MXN";
-      iniciarFormulario();
-      return;
-    }
-
-    if (orderName) {
-      try {
-        const resp = await fetch(NETLIFY_URL + "?order_name=" + encodeURIComponent(orderName));
-        const data = await resp.json();
-        if (data.total) {
-          monto = data.total;
-          montoDisplay.textContent = "$" + monto.toLocaleString("es-MX", { minimumFractionDigits: 2 }) + " MXN";
-          iniciarFormulario();
-          return;
-        }
-      } catch(e) {}
-    }
-
+  if (monto > 0) {
+    montoDisplay.textContent = "$" + monto.toLocaleString("es-MX", { minimumFractionDigits: 2 }) + " MXN";
+  } else {
     montoDisplay.textContent = "Monto no disponible";
+  }
+
+  async function crearPreferencia() {
+    try {
+      const resp = await fetch(NETLIFY_URL + "?action=crear_preferencia", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "crear_preferencia",
+          amount: monto,
+          description: descripcion,
+          order_name: orderName,
+          email: email,
+          back_url: "https://tiendasvm.com"
+        })
+      });
+
+      const data = await resp.json();
+
+      if (data.init_point) {
+        document.getElementById("loading").style.display = "none";
+        const btn = document.getElementById("btn-pagar");
+        btn.href = data.init_point;
+        btn.style.display = "flex";
+      } else {
+        throw new Error("No se obtuvo link de pago");
+      }
+    } catch(e) {
+      document.getElementById("loading").style.display = "none";
+      document.getElementById("error-box").style.display = "block";
+      document.getElementById("error-box").textContent = "Error al preparar el pago. Recarga la página.";
+    }
+  }
+
+  if (monto > 0) {
+    crearPreferencia();
+  } else {
     document.getElementById("loading").style.display = "none";
   }
-
-  function iniciarFormulario() {
-    const mp = new MercadoPago(PUBLIC_KEY, { locale: "es-MX" });
-    const bricksBuilder = mp.bricks();
-
-    bricksBuilder.create("cardPayment", "cardPaymentBrick_container", {
-      initialization: {
-        amount: monto,
-        payer: { email: email }
-      },
-      customization: {
-        visual: { style: { theme: "default" } },
-        paymentMethods: { minInstallments: 1, maxInstallments: 12 }
-      },
-      callbacks: {
-        onReady: () => {
-          document.getElementById("loading").style.display = "none";
-        },
-        onSubmit: (cardFormData) => {
-          return new Promise((resolve, reject) => {
-            fetch(NETLIFY_URL, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                ...cardFormData,
-                description: descripcion,
-                external_reference: orderName
-              })
-            })
-            .then(r => r.json())
-            .then(data => {
-              if (data.status === "approved") {
-                window.location.href = "https://tiendasvm.com.mx/gracias?order=" + orderName;
-              } else {
-                const errBox = document.getElementById("error-box");
-                errBox.style.display = "block";
-                errBox.textContent = "Pago no aprobado: " + (data.status_detail || "intenta con otra tarjeta");
-                reject();
-              }
-              resolve();
-            })
-            .catch(() => {
-              document.getElementById("error-box").style.display = "block";
-              reject();
-            });
-          });
-        },
-        onError: (error) => {
-          console.error(error);
-          document.getElementById("error-box").style.display = "block";
-        }
-      }
-    });
-  }
-
-  cargarMonto();
 </script>
 </body>
 </html>
